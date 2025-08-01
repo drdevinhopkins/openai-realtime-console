@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import logo from "/assets/openai-logomark.svg";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
-import ToolPanel from "./ToolPanel";
+import TranscriptionPane from "./TranscriptionPane";
+import ResponsePane from "./ResponsePane";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -145,7 +146,7 @@ export default function App() {
           type: 'session.update',
           session: {
             modalities: ['text'],
-            instructions: 'Transcribe audio only. No analysis or responses.',
+            instructions: "You are a helpful assistant to an emergency physician. Given the physician's dictation or conversation with the patient, extract all details of the history, physical exam, investigations, impression, plan and any other relevant details. Reply with a list. Do not make up or add any details that are not present in the conversation.",
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
@@ -170,8 +171,13 @@ export default function App() {
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
         <section className="absolute top-0 left-0 right-[380px] bottom-0 flex">
-          <section className="absolute top-0 left-0 right-0 bottom-32 px-4 overflow-y-auto">
-            <EventLog events={events} />
+          <section className="absolute top-0 left-0 right-0 bottom-32 px-4 flex flex-col">
+            <div className="flex-shrink-0 mb-4">
+              <TranscriptionPane events={events} />
+            </div>
+            <div className="flex-1 min-h-0">
+              <ResponsePane events={events} />
+            </div>
           </section>
           <section className="absolute h-32 left-0 right-0 bottom-0 p-4">
             <SessionControls
@@ -185,12 +191,7 @@ export default function App() {
           </section>
         </section>
         <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
-          <ToolPanel
-            sendClientEvent={sendClientEvent}
-            sendTextMessage={sendTextMessage}
-            events={events}
-            isSessionActive={isSessionActive}
-          />
+          <EventLog events={events} />
         </section>
       </main>
     </>
