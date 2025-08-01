@@ -9,8 +9,10 @@ export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
+  const [isMicrophoneMuted, setIsMicrophoneMuted] = useState(false);
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
+  const audioTrack = useRef(null);
 
   async function startSession() {
     // Get a session token for OpenAI Realtime API
@@ -30,7 +32,8 @@ export default function App() {
     const ms = await navigator.mediaDevices.getUserMedia({
       audio: true,
     });
-    pc.addTrack(ms.getTracks()[0]);
+    audioTrack.current = ms.getTracks()[0];
+    pc.addTrack(audioTrack.current);
 
     // Set up data channel for sending and receiving events
     const dc = pc.createDataChannel("oai-events");
@@ -60,6 +63,14 @@ export default function App() {
     peerConnection.current = pc;
   }
 
+  // Toggle microphone mute state
+  function toggleMicrophone() {
+    if (audioTrack.current) {
+      audioTrack.current.enabled = !audioTrack.current.enabled;
+      setIsMicrophoneMuted(!audioTrack.current.enabled);
+    }
+  }
+
   // Stop current session, clean up peer connection and data channel
   function stopSession() {
     if (dataChannel) {
@@ -78,7 +89,9 @@ export default function App() {
 
     setIsSessionActive(false);
     setDataChannel(null);
+    setIsMicrophoneMuted(false);
     peerConnection.current = null;
+    audioTrack.current = null;
   }
 
   // Send a message to the model
@@ -146,7 +159,7 @@ export default function App() {
           type: 'session.update',
           session: {
             modalities: ['text'],
-            instructions: "You are a helpful assistant to an emergency physician. Given the physician's dictation or conversation with the patient, extract all details of the history, physical exam, investigations, impression, plan and any other relevant details. Reply with a list. Do not make up or add any details that are not present in the conversation.",
+            instructions: "You are a helpful assistant to an emergency physician. Given the physician's dictation or conversation with the patient, extract all details of the history, physical exam, investigations, impression, plan and any other relevant details. Reply with a list. Do not make up or add any details that are not present in the conversation. Answer in a direct way without any preamble or introduction.",
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: {
@@ -187,6 +200,8 @@ export default function App() {
               sendTextMessage={sendTextMessage}
               events={events}
               isSessionActive={isSessionActive}
+              isMicrophoneMuted={isMicrophoneMuted}
+              toggleMicrophone={toggleMicrophone}
             />
           </section>
         </section>
