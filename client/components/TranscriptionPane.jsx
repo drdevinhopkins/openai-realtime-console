@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronDown, ChevronRight } from "react-feather";
+import { ChevronDown, ChevronUp } from "react-feather";
 
 export default function TranscriptionPane({ events }) {
   const [transcriptions, setTranscriptions] = useState([]);
@@ -31,7 +31,7 @@ export default function TranscriptionPane({ events }) {
         {isExpanded ? (
           <ChevronDown className="text-gray-500" size={20} />
         ) : (
-          <ChevronRight className="text-gray-500" size={20} />
+          <ChevronUp className="text-gray-500" size={20} />
         )}
       </div>
       {isExpanded && (

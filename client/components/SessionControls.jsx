@@ -16,7 +16,7 @@ function SessionStopped({ startSession }) {
     <div className="flex items-center justify-center w-full h-full">
       <Button
         onClick={handleStartSession}
-        className={isActivating ? "bg-gray-600" : "bg-red-600"}
+        className={isActivating ? "bg-gray-600" : "bg-[#b04a4a]"}
         icon={<CloudLightning height={16} />}
       >
         {isActivating ? "starting session..." : "start session"}

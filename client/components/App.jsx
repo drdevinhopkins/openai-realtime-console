@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import logo from "/assets/openai-logomark.svg";
+import { ChevronRight } from "react-feather";
+import logo from "/assets/appIcon.png";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import TranscriptionPane from "./TranscriptionPane";
@@ -10,6 +11,7 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
   const [isMicrophoneMuted, setIsMicrophoneMuted] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
   const audioTrack = useRef(null);
@@ -179,11 +181,11 @@ export default function App() {
       <nav className="absolute top-0 left-0 right-0 h-16 flex items-center">
         <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
           <img style={{ width: "24px" }} src={logo} />
-          <h1>realtime console</h1>
+          <h1>SCRIBBL<i style={{ color: '#b04a4a' }}>ER</i></h1>
         </div>
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
-        <section className="absolute top-0 left-0 right-[380px] bottom-0 flex">
+        <section className={`absolute top-0 left-0 bottom-0 flex transition-all duration-300 ${isSidebarOpen ? 'right-[380px]' : 'right-0'}`}>
           <section className="absolute top-0 left-0 right-0 bottom-32 px-4 flex flex-col">
             <div className="flex-shrink-0 mb-4">
               <TranscriptionPane events={events} />
@@ -205,7 +207,16 @@ export default function App() {
             />
           </section>
         </section>
-        <section className="absolute top-0 w-[380px] right-0 bottom-0 p-4 pt-0 overflow-y-auto">
+        
+        {/* Sidebar Toggle Button */}
+        <button
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          className={`absolute top-4 right-4 z-10 p-2 bg-white border border-gray-200 rounded-md shadow-sm hover:bg-gray-50 transition-all duration-300 ${isSidebarOpen ? 'right-[384px]' : 'right-4'}`}
+        >
+          <ChevronRight className={`text-gray-600 transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : ''}`} size={20} />
+        </button>
+        
+        <section className={`absolute top-0 right-0 bottom-0 p-4 pt-0 overflow-y-auto bg-white border-l border-gray-200 transition-all duration-300 ${isSidebarOpen ? 'w-[380px] translate-x-0' : 'w-[380px] translate-x-full'}`}>
           <EventLog events={events} />
         </section>
       </main>
