@@ -40,7 +40,7 @@ export default function App() {
     await pc.setLocalDescription(offer);
 
     const baseUrl = "https://api.openai.com/v1/realtime";
-    const model = "gpt-4o-realtime-preview-2024-12-17";
+    const model = "gpt-4o-mini-realtime-preview";
     const sdpResponse = await fetch(`${baseUrl}?model=${model}`, {
       method: "POST",
       body: offer.sdp,
@@ -139,6 +139,23 @@ export default function App() {
       dataChannel.addEventListener("open", () => {
         setIsSessionActive(true);
         setEvents([]);
+        
+        // Configure session for transcription-only mode
+        const sessionUpdateEvent = {
+          type: 'session.update',
+          session: {
+            modalities: ['text'],
+            instructions: 'Transcribe audio only. No analysis or responses.',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            input_audio_transcription: {
+              model: 'gpt-4o-mini-transcribe', // Lower latency, cost-effective model
+              language: 'en', // English language for consistent transcription
+            },
+          },
+        };
+        
+        sendClientEvent(sessionUpdateEvent);
       });
     }
   }, [dataChannel]);
