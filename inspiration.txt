@@ -1,0 +1,153 @@
+coachInstructions = `You are an intelligent sales assistant analyzing conversations in real-time.
+
+Your job is to:
+1. Track discussion topics with track_discussion_topic
+2. Detect commitments from both parties with detect_commitment  
+3. Analyze customer intent/stage with analyze_customer_intent
+4. Capture key insights with highlight_insight
+5. Create post-call action items with create_action_item
+6. IMPORTANT: Use detect_information_need when customer asks about or needs specific information
+
+For detect_information_need, watch for:
+- Questions about pricing, features, integration, support, implementation
+- Comparisons with competitors
+- Technical specifications or requirements
+- Timeline or deployment questions
+- Security, compliance, or data privacy concerns
+- ROI or value proposition inquiries
+
+When detecting information needs:
+- Set urgency to 'high' for direct questions ("What's the price?", "How does X work?")
+- Set urgency to 'medium' for exploratory discussions
+- Include the full customer question/statement in the context field
+- Be specific about the topic (e.g., "pricing" not just "information")
+
+Focus on:
+- What topics are being discussed (features, pricing, timeline, competitors)
+- What each party commits to ("I'll send...", "We'll provide...", "Let me check...")
+- Customer's buying stage (research, evaluation, decision, implementation)
+- Pain points, objections, positive signals, concerns
+- Action items for follow-up
+
+Be thorough but not intrusive. Extract actionable intelligence to help guide the sales rep.`
+
+
+
+            // Configure for transcription + coaching
+            const customerCoachConfig = {
+                type: 'session.update',
+                session: {
+                    modalities: ['text'],
+                    instructions: coachInstructions,
+                    input_audio_format: 'pcm16',
+                    output_audio_format: 'pcm16',
+                    input_audio_transcription: {
+                        model: 'gpt-4o-mini-transcribe', // Lower latency, cost-effective model
+                        language: 'en', // English language for consistent transcription
+                    },
+                    tools: [
+                        {
+                            type: 'function',
+                            name: 'track_discussion_topic',
+                            description: 'Track or update a discussion topic',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    name: { type: 'string', description: 'Topic name (e.g., "Pricing", "Integration", "Timeline")' },
+                                    sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral', 'mixed'] },
+                                    context: { type: 'string', description: 'Brief context about the discussion' },
+                                },
+                                required: ['name', 'sentiment'],
+                            },
+                        },
+                        {
+                            type: 'function',
+                            name: 'detect_commitment',
+                            description: 'Log a commitment made by either party',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    speaker: { type: 'string', enum: ['salesperson', 'customer'] },
+                                    text: { type: 'string', description: 'What was committed' },
+                                    type: { type: 'string', enum: ['promise', 'next_step', 'deliverable'] },
+                                    deadline: { type: 'string', description: 'When it should be done (optional)' },
+                                    context: { type: 'string', description: 'Additional context' },
+                                },
+                                required: ['speaker', 'text', 'type'],
+                            },
+                        },
+                        {
+                            type: 'function',
+                            name: 'analyze_customer_intent',
+                            description: 'Update customer intelligence analysis',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    intent: { type: 'string', enum: ['research', 'evaluation', 'decision', 'implementation', 'unknown'] },
+                                    buyingStage: { type: 'string', description: 'Current stage in buying process' },
+                                    sentiment: { type: 'string', enum: ['positive', 'negative', 'neutral'] },
+                                    engagementLevel: { type: 'number', minimum: 0, maximum: 100 },
+                                },
+                                required: ['intent', 'sentiment', 'engagementLevel'],
+                            },
+                        },
+                        {
+                            type: 'function',
+                            name: 'highlight_insight',
+                            description: 'Capture a key insight from the conversation',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    type: { type: 'string', enum: ['pain_point', 'objection', 'positive_signal', 'concern', 'question'] },
+                                    text: { type: 'string', description: 'The insight text' },
+                                    importance: { type: 'string', enum: ['high', 'medium', 'low'] },
+                                },
+                                required: ['type', 'text', 'importance'],
+                            },
+                        },
+                        {
+                            type: 'function',
+                            name: 'create_action_item',
+                            description: 'Create a post-call action item',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    text: { type: 'string', description: 'What needs to be done' },
+                                    owner: { type: 'string', enum: ['salesperson', 'customer', 'both'] },
+                                    type: { type: 'string', enum: ['follow_up', 'send_info', 'schedule', 'internal'] },
+                                    deadline: { type: 'string', description: 'When it should be done' },
+                                    relatedCommitment: { type: 'string', description: 'ID of related commitment if any' },
+                                },
+                                required: ['text', 'owner', 'type'],
+                            },
+                        },
+                        {
+                            type: 'function',
+                            name: 'detect_information_need',
+                            description: 'Detect when customer is asking about or discussing topics that require specific information',
+                            parameters: {
+                                type: 'object',
+                                properties: {
+                                    topic: {
+                                        type: 'string',
+                                        description: 'The main topic being discussed (e.g., "pricing", "features", "integration")',
+                                    },
+                                    context: { type: 'string', description: 'The specific context or question from the customer' },
+                                    urgency: {
+                                        type: 'string',
+                                        enum: ['high', 'medium', 'low'],
+                                        description: 'How urgently the information is needed',
+                                    },
+                                },
+                                required: ['topic', 'context'],
+                            },
+                        },
+                    ],
+                    turn_detection: {
+                        type: 'server_vad',
+                        threshold: 0.6, // Very aggressive
+                        prefix_padding_ms: 50, // Minimal padding
+                        silence_duration_ms: 150, // Fast detection
+                    },
+                },
+            };
