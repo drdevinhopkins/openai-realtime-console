@@ -5,16 +5,19 @@ import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import TranscriptionPane from "./TranscriptionPane";
 import ResponsePane from "./ResponsePane";
+import ClinicalNote from "./ClinicalNote";
 
 export default function App() {
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
   const [isMicrophoneMuted, setIsMicrophoneMuted] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const peerConnection = useRef(null);
   const audioElement = useRef(null);
   const audioTrack = useRef(null);
+
+  // Developer mode flag - controls sidebar visibility
+  const developerMode = true; // Default to true, can be moved to settings later
 
   async function startSession() {
     // Get a session token for OpenAI Realtime API
@@ -109,7 +112,7 @@ export default function App() {
       if (!message.timestamp) {
         message.timestamp = timestamp;
       }
-      setEvents((prev) => [message, ...prev]);
+      setEvents((prev) => [...prev, message]);
     } else {
       console.error(
         "Failed to send message - no data channel available",
@@ -148,7 +151,7 @@ export default function App() {
           event.timestamp = new Date().toLocaleTimeString();
         }
 
-        setEvents((prev) => [event, ...prev]);
+        setEvents((prev) => [...prev, event]);
       });
 
       // Set session active when the data channel is opened
@@ -163,7 +166,7 @@ export default function App() {
             modalities: ['text'],
             instructions: `You are a highly accurate and reliable AI medical scribe tasked with transcribing a healthcare provider's dictation.
             Your top priority is fidelity to the transcription — you must only include information explicitly stated by the patient or provider. Do not infer, assume, or generate any additional details.
-            Make corrections to the following transcript for grammar & punctuation and make minor edits for a formal, professional tone. 
+            Make corrections for grammar & punctuation and make minor edits for a formal, professional tone. 
             Remove filler words and phrases.
             Use the names of people, places and institutions related to the Jewish General Hospital in Montreal, Quebec, Canada. Use medication names and medical terminology in a Canadian context.`,
             output_audio_format: 'pcm16',
@@ -171,6 +174,10 @@ export default function App() {
               model: 'gpt-4o-mini-transcribe', // Lower latency, cost-effective model
               language: 'en', // English language for consistent transcription
             },
+            "turn_detection": {
+              "type": "semantic_vad",
+              "eagerness": "high", // optional
+            }
           },
         };
         
@@ -188,13 +195,15 @@ export default function App() {
         </div>
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
-        <section className={`absolute top-0 left-0 bottom-0 flex transition-all duration-300 ${isSidebarOpen ? 'right-[380px]' : 'right-0'}`}>
+        <section className={`absolute top-0 left-0 bottom-0 flex transition-all duration-300 ${developerMode ? 'right-[380px]' : 'right-0'}`}>
           <section className="absolute top-0 left-0 right-0 bottom-32 px-4 flex flex-col">
-            <div className="flex-shrink-0 mb-4">
-              <TranscriptionPane events={events} />
-            </div>
-            <div className="flex-1 min-h-0">
-              <ResponsePane events={events} />
+            <div className="flex-1 min-h-0 flex gap-4">
+              <div className="flex-1">
+                <ResponsePane events={events} />
+              </div>
+              <div className="flex-1">
+                <ClinicalNote events={events} />
+              </div>
             </div>
           </section>
           <section className="absolute h-32 left-0 right-0 bottom-0 p-4">
@@ -211,17 +220,28 @@ export default function App() {
           </section>
         </section>
         
-        {/* Sidebar Toggle Button */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className={`absolute top-4 right-4 z-10 p-2 bg-white border border-gray-200 rounded-md shadow-sm hover:bg-gray-50 transition-all duration-300 ${isSidebarOpen ? 'right-[384px]' : 'right-4'}`}
-        >
-          <ChevronRight className={`text-gray-600 transition-transform duration-300 ${isSidebarOpen ? 'rotate-180' : ''}`} size={20} />
-        </button>
-        
-        <section className={`absolute top-0 right-0 bottom-0 p-4 pt-0 overflow-y-auto bg-white border-l border-gray-200 transition-all duration-300 ${isSidebarOpen ? 'w-[380px] translate-x-0' : 'w-[380px] translate-x-full'}`}>
-          <EventLog events={events} />
-        </section>
+        {developerMode && (
+          <section className="absolute top-0 right-0 bottom-0 bg-white border-l border-gray-200 w-[380px]">
+            <div className="h-full flex flex-col">
+              <div className="flex-1 min-h-0 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-100 bg-gray-50">
+                  <h3 className="text-sm font-semibold text-gray-900">Transcription</h3>
+                </div>
+                <div className="p-4 h-full overflow-y-auto">
+                  <TranscriptionPane events={events} />
+                </div>
+              </div>
+              <div className="flex-1 min-h-0">
+                <div className="p-4 border-b border-gray-100 bg-gray-50">
+                  <h3 className="text-sm font-semibold text-gray-900">Debug Events</h3>
+                </div>
+                <div className="p-4 h-full overflow-y-auto">
+                  <EventLog events={events} />
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
     </>
   );
