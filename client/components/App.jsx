@@ -161,8 +161,11 @@ export default function App() {
           type: 'session.update',
           session: {
             modalities: ['text'],
-            instructions: "You are a helpful assistant to an emergency physician. Given the physician's dictation or conversation with the patient, extract all details of the history, physical exam, investigations, impression, plan and any other relevant details. Reply with a list. Do not make up or add any details that are not present in the conversation. Answer in a direct way without any preamble or introduction.",
-            input_audio_format: 'pcm16',
+            instructions: `You are a highly accurate and reliable AI medical scribe tasked with transcribing a healthcare provider's dictation.
+            Your top priority is fidelity to the transcription — you must only include information explicitly stated by the patient or provider. Do not infer, assume, or generate any additional details.
+            Make corrections to the following transcript for grammar & punctuation and make minor edits for a formal, professional tone. 
+            Remove filler words and phrases.
+            Use the names of people, places and institutions related to the Jewish General Hospital in Montreal, Quebec, Canada. Use medication names and medical terminology in a Canadian context.`,
             output_audio_format: 'pcm16',
             input_audio_transcription: {
               model: 'gpt-4o-mini-transcribe', // Lower latency, cost-effective model
@@ -181,7 +184,7 @@ export default function App() {
       <nav className="absolute top-0 left-0 right-0 h-16 flex items-center">
         <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
           <img style={{ width: "24px" }} src={logo} />
-          <h1>SCRIBBL<i style={{ color: '#b04a4a' }}>ER</i></h1>
+          <h1>SCRIBBL<i style={{ color: '#b04a4a' }}>ER</i> live</h1>
         </div>
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
