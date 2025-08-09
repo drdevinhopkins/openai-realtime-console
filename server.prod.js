@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import "dotenv/config";
+import { authenticateToken } from "./server/auth-middleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,7 @@ const apiKey = process.env.OPENAI_API_KEY;
 app.use(express.json());
 
 // API route for token generation
-app.get("/token", async (req, res) => {
+app.get("/token", authenticateToken, async (req, res) => {
   try {
     const response = await fetch(
       "https://api.openai.com/v1/realtime/sessions",
@@ -41,7 +42,7 @@ app.get("/token", async (req, res) => {
 });
 
 // API route for processing dictation into clinical note
-app.post("/process-dictation", async (req, res) => {
+app.post("/process-dictation", authenticateToken, async (req, res) => {
   try {
     const { dictationText } = req.body;
     

@@ -2,16 +2,23 @@ import express from "express";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import "dotenv/config";
+import OpenAI from "openai";
+import { authenticateToken } from "./server/auth-middleware.js";
 
 const app = express();
 const port = process.env.PORT || 8080;
 const apiKey = process.env.OPENAI_API_KEY;
 
+// Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: apiKey,
+});
+
 // Add JSON parsing middleware
 app.use(express.json());
 
 // API route for token generation
-app.get("/token", async (req, res) => {
+app.get("/token", authenticateToken, async (req, res) => {
   try {
     const response = await fetch(
       "https://api.openai.com/v1/realtime/sessions",
@@ -37,12 +44,16 @@ app.get("/token", async (req, res) => {
 });
 
 // API route for processing dictation into clinical note
-app.post("/process-dictation", async (req, res) => {
+app.post("/process-dictation", authenticateToken, async (req, res) => {
   try {
     const { dictationText } = req.body;
     
     if (!dictationText || dictationText.trim() === "") {
       return res.status(400).json({ error: "Dictation text is required" });
+    }
+
+    if (!apiKey) {
+      return res.status(500).json({ error: "OpenAI API key not configured" });
     }
 
     const systemPrompt = `You are a highly accurate and reliable AI medical scribe tasked with transcribing a healthcare provider's dictation or an ambiently recorded patient-provider interaction into a structured History and Physical (H&P) note. Your top priority is fidelity to the transcription — you must only include information explicitly stated by the patient or provider. Do not infer, assume, or generate any additional details.
@@ -99,35 +110,27 @@ Do not use markdown.
 
 The following is the transcript of the provider's medical dictation or patient-provider interaction:`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: dictationText
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000
-      })
+    console.log("Sending request to OpenAI API with model: gpt-5-mini");
+    console.log("Dictation text length:", dictationText.length);
+    console.log("System prompt length:", systemPrompt.length);
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1-mini",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: dictationText
+        }
+      ],
+      // temperature: 0.1,
+      max_completion_tokens: 4000
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    const clinicalNote = data.choices[0].message.content;
+    const clinicalNote = completion.choices[0].message.content;
     
     res.json({ clinicalNote });
   } catch (error) {

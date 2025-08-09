@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
+import { getIdToken } from "../firebase";
 
-export default function ClinicalNote({ events }) {
+export default function ClinicalNote({ events, setEvents }) {
   const [clinicalNote, setClinicalNote] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
@@ -41,24 +42,77 @@ export default function ClinicalNote({ events }) {
     setIsProcessing(true);
     setError("");
     
+    // Add debug event for processing start
+    if (setEvents) {
+      const startEvent = {
+        type: "clinical_note.processing_start",
+        event_id: `clinical_note_start_${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        processing: {
+          dictationLength: dictationText.length,
+          timestamp: new Date().toISOString()
+        }
+      };
+      setEvents(prev => [...prev, startEvent]);
+    }
+    
     try {
+      // Get authentication token
+      const authToken = await getIdToken();
+      if (!authToken) {
+        throw new Error('No authentication token available');
+      }
+
       const response = await fetch("/process-dictation", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`
         },
         body: JSON.stringify({ dictationText }),
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
       }
 
       const data = await response.json();
       setClinicalNote(data.clinicalNote);
+      
+      // Add debug event for successful processing
+      if (setEvents) {
+        const successEvent = {
+          type: "clinical_note.success",
+          event_id: `clinical_note_success_${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString(),
+          processing: {
+            dictationLength: dictationText.length,
+            clinicalNoteLength: data.clinicalNote.length,
+            timestamp: new Date().toISOString()
+          }
+        };
+        setEvents(prev => [...prev, successEvent]);
+      }
     } catch (err) {
       console.error("Error processing dictation:", err);
       setError("Failed to process dictation into clinical note. Please try again.");
+      
+      // Add debug event for error tracking
+      if (setEvents) {
+        const errorEvent = {
+          type: "clinical_note.error",
+          event_id: `clinical_note_error_${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString(),
+          error: {
+            message: err.message,
+            stack: err.stack,
+            dictationText: dictationText.substring(0, 200) + (dictationText.length > 200 ? "..." : ""), // Truncate for readability
+            timestamp: new Date().toISOString()
+          }
+        };
+        setEvents(prev => [...prev, errorEvent]);
+      }
     } finally {
       setIsProcessing(false);
     }
