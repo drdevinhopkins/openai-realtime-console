@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight } from "react-feather";
 import logo from "/assets/appIcon.png";
 import EventLog from "./EventLog";
 import SessionControls from "./SessionControls";
 import TranscriptionPane from "./TranscriptionPane";
 import ResponsePane from "./ResponsePane";
 import ClinicalNote from "./ClinicalNote";
+import { useAuth } from "./AuthContext";
+import UserProfile from "./UserProfile";
+import Login from "./Login";
+import { getIdToken } from "../firebase";
 
 export default function App() {
+  const { user, loading, isAuthenticated } = useAuth();
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [events, setEvents] = useState([]);
   const [dataChannel, setDataChannel] = useState(null);
@@ -20,8 +24,25 @@ export default function App() {
   const developerMode = true; // Default to true, can be moved to settings later
 
   async function startSession() {
+    // Get authentication token
+    const authToken = await getIdToken();
+    if (!authToken) {
+      console.error('No authentication token available');
+      return;
+    }
+
     // Get a session token for OpenAI Realtime API
-    const tokenResponse = await fetch("/token");
+    const tokenResponse = await fetch("/token", {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    if (!tokenResponse.ok) {
+      console.error('Failed to get session token:', tokenResponse.status);
+      return;
+    }
+    
     const data = await tokenResponse.json();
     const EPHEMERAL_KEY = data.client_secret.value;
 
@@ -186,12 +207,32 @@ export default function App() {
     }
   }, [dataChannel]);
 
+  // Show loading spinner while checking authentication
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login page if not authenticated
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   return (
     <>
       <nav className="absolute top-0 left-0 right-0 h-16 flex items-center">
-        <div className="flex items-center gap-4 w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
-          <img style={{ width: "24px" }} src={logo} />
-          <h1>SCRIBBL<i style={{ color: '#b04a4a' }}>ER</i> live</h1>
+        <div className="flex items-center justify-between w-full m-4 pb-2 border-0 border-b border-solid border-gray-200">
+          <div className="flex items-center gap-4">
+            <img style={{ width: "24px" }} src={logo} />
+            <h1>SCRIBBL<i style={{ color: '#b04a4a' }}>ER</i> live</h1>
+          </div>
+          <UserProfile />
         </div>
       </nav>
       <main className="absolute top-16 left-0 right-0 bottom-0">
@@ -202,7 +243,7 @@ export default function App() {
                 <ResponsePane events={events} />
               </div>
               <div className="flex-1">
-                <ClinicalNote events={events} />
+                <ClinicalNote events={events} setEvents={setEvents} />
               </div>
             </div>
           </section>
